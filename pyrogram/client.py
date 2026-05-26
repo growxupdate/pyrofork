@@ -1127,7 +1127,17 @@ class Client(Methods):
             no_temp = False
 
         _ = os.makedirs(directory, exist_ok=True) if not in_memory else None
-        file_path = os.path.abspath(re.sub("\\", "/", os.path.join(directory, file_name)))
+
+        # Build the destination path without regex.
+        # The previous code used re.sub("\\", "/", ...), which is an
+        # invalid regular expression replacement pattern and can raise:
+        #   re.error: bad escape (end of pattern) at position 0
+        # during download_media()/handle_download().
+        # str.replace is enough here and works safely for both normal and
+        # no_temp downloads. os.fspath keeps pathlib.Path support intact.
+        joined_path = os.path.join(os.fspath(directory), os.fspath(file_name))
+        file_path = os.path.abspath(os.path.normpath(joined_path.replace("\\", os.sep)))
+
         temp_file_path = file_path if no_temp else file_path + ".temp"
         file = BytesIO() if in_memory else open(temp_file_path, "wb")
 
